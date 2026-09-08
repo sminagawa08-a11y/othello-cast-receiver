@@ -1,0 +1,2 @@
+# othello-cast-receiver
+test
