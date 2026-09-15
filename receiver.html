@@ -1,27 +1,391 @@
-<!doctype html><html><head><meta charset="utf-8"><title>Cast Quest</title><script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script><style>html,body,canvas{margin:0;width:100%;height:100%;overflow:hidden;background:#071827}canvas{display:block}</style></head><body><canvas id="game"></canvas><script>
-const NS='urn:x-cast:com.example.castquest';
-const canvas=document.getElementById('game'),g=canvas.getContext('2d');
-let key={left:false,right:false};
-let player={x:140,y:0,vx:0,vy:0,w:42,h:58,hp:100,maxHp:100,level:1,xp:0,potions:3,onGround:false,attack:0,inv:0};
-let camera=0, won=false, gameOver=false;
-const worldW=6200, groundY=640;
-const platforms=[{x:0,y:groundY,w:worldW,h:300},{x:520,y:520,w:220,h:24},{x:900,y:450,w:180,h:24},{x:1350,y:540,w:260,h:24},{x:1900,y:470,w:180,h:24},{x:2450,y:400,w:240,h:24},{x:3100,y:530,w:260,h:24},{x:3800,y:450,w:220,h:24},{x:4550,y:520,w:300,h:24},{x:5300,y:420,w:230,h:24}];
-let enemies=[]; let gems=[];
-function init(){player.x=140;player.y=groundY-player.h;player.vx=player.vy=0;player.hp=player.maxHp;player.level=1;player.xp=0;player.potions=3;camera=0;won=false;gameOver=false;enemies=[];gems=[];for(let i=0;i<12;i++)enemies.push({x:650+i*430,y:groundY-42,w:44,h:42,hp:i===11?5:2,dir:i%2?1:-1,boss:i===11});for(let i=0;i<15;i++)gems.push({x:420+i*360,y:groundY-100-(i%3)*70,taken:false});}
-function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}addEventListener('resize',resize);resize();init();
-function input(a,p){if(a==='left'||a==='right')key[a]=p;if(!p)return;if(a==='jump'&&player.onGround){player.vy=-760;player.onGround=false;}if(a==='attack'&&player.attack<=0)player.attack=.28;if(a==='potion'&&player.potions>0&&player.hp<player.maxHp){player.potions--;player.hp=Math.min(player.maxHp,player.hp+45);}if(a==='reset')init();if(a==='sync'){} }
-function rects(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
-function update(dt){if(gameOver||won)return;player.vx=(key.right?260:0)-(key.left?260:0);player.vy+=1850*dt;let oldY=player.y;player.x+=player.vx*dt;player.y+=player.vy*dt;player.x=Math.max(0,Math.min(worldW-player.w,player.x));player.onGround=false;for(const p of platforms){if(player.x+player.w>p.x&&player.x<p.x+p.w&&oldY+player.h<=p.y+8&&player.y+player.h>=p.y&&player.vy>=0){player.y=p.y-player.h;player.vy=0;player.onGround=true;}}
-if(player.y>canvas.height+400){player.hp=0;}if(player.attack>0)player.attack-=dt;if(player.inv>0)player.inv-=dt;
-for(const e of enemies){if(e.hp<=0)continue;e.x+=e.dir*(e.boss?65:42)*dt;if(e.x<100||e.x>worldW-100)e.dir*=-1;let hit={x:player.x+(player.vx>=0?player.w:-55),y:player.y+8,w:55,h:40};if(player.attack>0&&rects(hit,e)){e.hp--;player.attack=0;if(e.hp<=0){player.xp+=e.boss?50:12;if(player.xp>=player.level*30){player.level++;player.maxHp+=15;player.hp=player.maxHp;}}}if(rects(player,e)&&player.inv<=0){player.hp-=e.boss?25:14;player.inv=1;player.vy=-320;}}
-for(const gem of gems){if(!gem.taken&&Math.abs((player.x+player.w/2)-gem.x)<42&&Math.abs((player.y+player.h/2)-gem.y)<50){gem.taken=true;player.xp+=5;}}
-if(player.hp<=0)gameOver=true;if(player.x>worldW-180)won=true;camera+=(Math.max(0,Math.min(worldW-canvas.width,player.x-canvas.width*.35))-camera)*Math.min(1,dt*7);}
-function draw(){let W=canvas.width,H=canvas.height;let scale=H/720;g.setTransform(scale,0,0,scale,0,0);W/=scale;H/=scale;g.fillStyle='#6fd3ff';g.fillRect(0,0,W,H);g.fillStyle='#dff6ff';for(let i=0;i<8;i++){let cx=((i*310-camera*.18)%2400+2400)%2400-200;g.beginPath();g.arc(cx,110+(i%3)*55,55,0,7);g.fill();}
-g.fillStyle='#75b85b';for(let i=0;i<20;i++){let hx=i*380-camera*.45;g.beginPath();g.moveTo(hx,groundY);g.lineTo(hx+190,300+(i%3)*55);g.lineTo(hx+380,groundY);g.fill();}
-g.save();g.translate(-camera,0);for(const p of platforms){g.fillStyle=p.y===groundY?'#654321':'#8b5a2b';g.fillRect(p.x,p.y,p.w,p.h);g.fillStyle='#38a34a';g.fillRect(p.x,p.y,p.w,12);}for(const gem of gems){if(!gem.taken){g.fillStyle='#7c3aed';g.beginPath();g.moveTo(gem.x,gem.y-14);g.lineTo(gem.x+13,gem.y);g.lineTo(gem.x,gem.y+14);g.lineTo(gem.x-13,gem.y);g.fill();}}
-for(const e of enemies){if(e.hp<=0)continue;g.fillStyle=e.boss?'#991b1b':'#e11d48';g.fillRect(e.x,e.y,e.w,e.h);g.fillStyle='white';g.fillRect(e.x+8,e.y+10,8,8);g.fillRect(e.x+e.w-16,e.y+10,8,8);}
-if(player.inv<=0||Math.floor(player.inv*12)%2===0){g.fillStyle='#f59e0b';g.fillRect(player.x,player.y,player.w,player.h);g.fillStyle='#0f172a';g.fillRect(player.x+8,player.y+11,8,8);g.fillStyle='#2563eb';g.fillRect(player.x+4,player.y+35,player.w-8,20);}if(player.attack>0){g.fillStyle='#fef08a';g.fillRect(player.x+player.w,player.y+12,45,12);}g.fillStyle='#facc15';g.fillRect(worldW-100,groundY-150,18,150);g.fillStyle='#ef4444';g.fillRect(worldW-82,groundY-150,95,55);g.restore();
-g.setTransform(scale,0,0,scale,0,0);g.fillStyle='rgba(15,23,42,.86)';g.fillRect(18,18,420,92);g.fillStyle='white';g.font='bold 24px sans-serif';g.fillText('CAST QUEST',34,48);g.font='18px sans-serif';g.fillText(`LV ${player.level}  XP ${player.xp}  POTION ${player.potions}`,34,78);g.fillStyle='#3f1d1d';g.fillRect(210,60,200,18);g.fillStyle='#22c55e';g.fillRect(210,60,200*Math.max(0,player.hp/player.maxHp),18);g.fillStyle='white';g.fillText(`HP ${Math.max(0,player.hp)}/${player.maxHp}`,215,76);if(gameOver||won){g.fillStyle='rgba(0,0,0,.72)';g.fillRect(0,0,W,H);g.fillStyle=won?'#fde047':'#fff';g.font='bold 62px sans-serif';g.textAlign='center';g.fillText(won?'STAGE CLEAR!':'GAME OVER',W/2,H/2);g.font='26px sans-serif';g.fillText('スマホの「最初から」で再開',W/2,H/2+50);g.textAlign='left';}}
-let last=performance.now();function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop);}requestAnimationFrame(loop);
-const context=cast.framework.CastReceiverContext.getInstance();context.addCustomMessageListener(NS,e=>{try{const m=typeof e.data==='string'?JSON.parse(e.data):e.data;if(m&&m.type==='input')input(m.action,!!m.pressed);}catch(err){console.error(err);}});context.start();
-</script></body></html>
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cast Quest Gesture Edition</title>
+<script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+<style>
+html,body,canvas{margin:0;width:100%;height:100%;overflow:hidden;background:#071827}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const NAMESPACE = 'urn:x-cast:com.example.castquest';
+const canvas = document.getElementById('game');
+const g = canvas.getContext('2d');
+
+let moveValue = 0;
+let paused = false;
+let won = false;
+let gameOver = false;
+let camera = 0;
+
+const worldWidth = 6200;
+const groundY = 640;
+
+let player = {
+  x: 140,
+  y: 0,
+  vx: 0,
+  vy: 0,
+  baseW: 42,
+  baseH: 58,
+  scale: 1,
+  hp: 100,
+  maxHp: 100,
+  level: 1,
+  xp: 0,
+  potions: 3,
+  onGround: false,
+  attackTime: 0,
+  attackDirection: 'right',
+  invincibleTime: 0,
+  facing: 1
+};
+
+const platforms = [
+  {x:0,y:groundY,w:worldWidth,h:300},
+  {x:520,y:520,w:220,h:24},
+  {x:900,y:450,w:180,h:24},
+  {x:1350,y:540,w:260,h:24},
+  {x:1900,y:470,w:180,h:24},
+  {x:2450,y:400,w:240,h:24},
+  {x:3100,y:530,w:260,h:24},
+  {x:3800,y:450,w:220,h:24},
+  {x:4550,y:520,w:300,h:24},
+  {x:5300,y:420,w:230,h:24}
+];
+
+let enemies = [];
+let gems = [];
+
+function playerWidth() { return player.baseW * player.scale; }
+function playerHeight() { return player.baseH * player.scale; }
+function playerRect() {
+  return {x:player.x, y:player.y, w:playerWidth(), h:playerHeight()};
+}
+
+function initGame() {
+  player.x = 140;
+  player.scale = 1;
+  player.y = groundY - playerHeight();
+  player.vx = 0;
+  player.vy = 0;
+  player.hp = 100;
+  player.maxHp = 100;
+  player.level = 1;
+  player.xp = 0;
+  player.potions = 3;
+  player.onGround = true;
+  player.attackTime = 0;
+  player.invincibleTime = 0;
+  player.facing = 1;
+  moveValue = 0;
+  camera = 0;
+  paused = false;
+  won = false;
+  gameOver = false;
+  enemies = [];
+  gems = [];
+  for (let i=0;i<12;i++) {
+    enemies.push({
+      x:650+i*430,
+      y:groundY-42,
+      w:i===11?72:44,
+      h:i===11?72:42,
+      hp:i===11?5:2,
+      dir:i%2?1:-1,
+      boss:i===11
+    });
+  }
+  for (let i=0;i<15;i++) {
+    gems.push({x:420+i*360,y:groundY-100-(i%3)*70,taken:false});
+  }
+}
+
+function resize() {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+}
+addEventListener('resize', resize);
+resize();
+initGame();
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function overlap(a,b) {
+  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+}
+
+function applyScale(newScale) {
+  const oldHeight = playerHeight();
+  player.scale = clamp(newScale, 0.5, 10.0);
+  const newHeight = playerHeight();
+  player.y += oldHeight - newHeight;
+  player.x = clamp(player.x, 0, worldWidth-playerWidth());
+}
+
+function attackRect() {
+  const p = playerRect();
+  const reach = Math.max(50, 45 * player.scale);
+  const thickness = Math.max(34, 32 * player.scale);
+  switch (player.attackDirection) {
+    case 'left':
+      return {x:p.x-reach,y:p.y+p.h*0.25,w:reach,h:thickness};
+    case 'up':
+      return {x:p.x+p.w*0.2,y:p.y-reach,w:thickness,h:reach};
+    case 'down':
+      return {x:p.x+p.w*0.2,y:p.y+p.h,w:thickness,h:reach};
+    default:
+      return {x:p.x+p.w,y:p.y+p.h*0.25,w:reach,h:thickness};
+  }
+}
+
+function handleInput(message) {
+  const action = message.action;
+  if (action === 'move') {
+    moveValue = clamp(Number(message.value) || 0, -1, 1);
+    return;
+  }
+  if (action === 'scale') {
+    applyScale(Number(message.value) || 1);
+    return;
+  }
+  if (action === 'pause') {
+    paused = !paused;
+    moveValue = 0;
+    return;
+  }
+  if (action === 'reset') {
+    initGame();
+    return;
+  }
+  if (paused || gameOver || won) return;
+
+  if (action === 'jump' && player.onGround) {
+    player.vy = -760;
+    player.onGround = false;
+  } else if (action === 'potion' && player.potions > 0 && player.hp < player.maxHp) {
+    player.potions--;
+    player.hp = Math.min(player.maxHp, player.hp + 45);
+  } else if (action === 'attack' && player.attackTime <= 0) {
+    player.attackDirection = message.direction || (player.facing >= 0 ? 'right' : 'left');
+    player.attackTime = 0.28;
+  }
+}
+
+function update(dt) {
+  if (paused || gameOver || won) return;
+
+  player.vx = moveValue * 300;
+  if (Math.abs(moveValue) > 0.05) player.facing = moveValue >= 0 ? 1 : -1;
+  player.vy += 1850 * dt;
+
+  const oldBottom = player.y + playerHeight();
+  player.x += player.vx * dt;
+  player.y += player.vy * dt;
+  player.x = clamp(player.x, 0, worldWidth-playerWidth());
+  player.onGround = false;
+
+  const pWidth = playerWidth();
+  const pHeight = playerHeight();
+  for (const platform of platforms) {
+    if (player.x+pWidth > platform.x && player.x < platform.x+platform.w
+        && oldBottom <= platform.y+10
+        && player.y+pHeight >= platform.y
+        && player.vy >= 0) {
+      player.y = platform.y-pHeight;
+      player.vy = 0;
+      player.onGround = true;
+    }
+  }
+
+  if (player.y > 1100) player.hp = 0;
+  if (player.attackTime > 0) player.attackTime -= dt;
+  if (player.invincibleTime > 0) player.invincibleTime -= dt;
+
+  const pRect = playerRect();
+  const hitRect = attackRect();
+
+  for (const enemy of enemies) {
+    if (enemy.hp <= 0) continue;
+    enemy.x += enemy.dir * (enemy.boss ? 65 : 42) * dt;
+    if (enemy.x < 100 || enemy.x > worldWidth-100) enemy.dir *= -1;
+
+    if (player.attackTime > 0 && overlap(hitRect, enemy)) {
+      enemy.hp--;
+      player.attackTime = 0;
+      if (enemy.hp <= 0) {
+        player.xp += enemy.boss ? 50 : 12;
+        if (player.xp >= player.level*30) {
+          player.level++;
+          player.maxHp += 15;
+          player.hp = player.maxHp;
+        }
+      }
+    }
+
+    if (overlap(pRect, enemy) && player.invincibleTime <= 0) {
+      player.hp -= enemy.boss ? 25 : 14;
+      player.invincibleTime = 1;
+      player.vy = -320;
+    }
+  }
+
+  for (const gem of gems) {
+    if (!gem.taken
+        && Math.abs((player.x+pWidth/2)-gem.x) < Math.max(42,pWidth/2)
+        && Math.abs((player.y+pHeight/2)-gem.y) < Math.max(50,pHeight/2)) {
+      gem.taken = true;
+      player.xp += 5;
+    }
+  }
+
+  if (player.hp <= 0) gameOver = true;
+  if (player.x > worldWidth-180) won = true;
+
+  const targetCamera = clamp(
+    player.x - (canvas.width/(canvas.height/720))*0.35,
+    0,
+    Math.max(0,worldWidth-canvas.width/(canvas.height/720)));
+  camera += (targetCamera-camera) * Math.min(1,dt*7);
+}
+
+function draw() {
+  let width = canvas.width;
+  let height = canvas.height;
+  const viewScale = height/720;
+  g.setTransform(viewScale,0,0,viewScale,0,0);
+  width /= viewScale;
+  height /= viewScale;
+
+  g.fillStyle = '#6fd3ff';
+  g.fillRect(0,0,width,height);
+
+  g.fillStyle = '#dff6ff';
+  for (let i=0;i<8;i++) {
+    const cloudX = ((i*310-camera*0.18)%2400+2400)%2400-200;
+    g.beginPath();
+    g.arc(cloudX,110+(i%3)*55,55,0,Math.PI*2);
+    g.fill();
+  }
+
+  g.fillStyle = '#75b85b';
+  for (let i=0;i<20;i++) {
+    const hillX = i*380-camera*0.45;
+    g.beginPath();
+    g.moveTo(hillX,groundY);
+    g.lineTo(hillX+190,300+(i%3)*55);
+    g.lineTo(hillX+380,groundY);
+    g.fill();
+  }
+
+  g.save();
+  g.translate(-camera,0);
+
+  for (const platform of platforms) {
+    g.fillStyle = platform.y===groundY ? '#654321' : '#8b5a2b';
+    g.fillRect(platform.x,platform.y,platform.w,platform.h);
+    g.fillStyle = '#38a34a';
+    g.fillRect(platform.x,platform.y,platform.w,12);
+  }
+
+  for (const gem of gems) {
+    if (!gem.taken) {
+      g.fillStyle = '#7c3aed';
+      g.beginPath();
+      g.moveTo(gem.x,gem.y-14);
+      g.lineTo(gem.x+13,gem.y);
+      g.lineTo(gem.x,gem.y+14);
+      g.lineTo(gem.x-13,gem.y);
+      g.closePath();
+      g.fill();
+    }
+  }
+
+  for (const enemy of enemies) {
+    if (enemy.hp <= 0) continue;
+    g.fillStyle = enemy.boss ? '#991b1b' : '#e11d48';
+    g.fillRect(enemy.x,enemy.y,enemy.w,enemy.h);
+    g.fillStyle = 'white';
+    g.fillRect(enemy.x+8,enemy.y+10,8,8);
+    g.fillRect(enemy.x+enemy.w-16,enemy.y+10,8,8);
+  }
+
+  const pw = playerWidth();
+  const ph = playerHeight();
+  if (player.invincibleTime<=0 || Math.floor(player.invincibleTime*12)%2===0) {
+    g.fillStyle = '#f59e0b';
+    g.fillRect(player.x,player.y,pw,ph);
+    g.fillStyle = '#0f172a';
+    g.fillRect(player.x+pw*0.20,player.y+ph*0.18,pw*0.18,ph*0.14);
+    g.fillStyle = '#2563eb';
+    g.fillRect(player.x+pw*0.10,player.y+ph*0.60,pw*0.80,ph*0.34);
+  }
+
+  if (player.attackTime > 0) {
+    const hit = attackRect();
+    g.fillStyle = 'rgba(254,240,138,0.85)';
+    g.fillRect(hit.x,hit.y,hit.w,hit.h);
+  }
+
+  g.fillStyle = '#facc15';
+  g.fillRect(worldWidth-100,groundY-150,18,150);
+  g.fillStyle = '#ef4444';
+  g.fillRect(worldWidth-82,groundY-150,95,55);
+  g.restore();
+
+  g.fillStyle = 'rgba(15,23,42,.86)';
+  g.fillRect(18,18,510,100);
+  g.fillStyle = 'white';
+  g.font = 'bold 24px sans-serif';
+  g.fillText('CAST QUEST',34,48);
+  g.font = '18px sans-serif';
+  g.fillText(`LV ${player.level}  XP ${player.xp}  POTION ${player.potions}  SIZE ${player.scale.toFixed(2)}x`,34,80);
+  g.fillStyle = '#3f1d1d';
+  g.fillRect(285,88,210,18);
+  g.fillStyle = '#22c55e';
+  g.fillRect(285,88,210*Math.max(0,player.hp/player.maxHp),18);
+  g.fillStyle = 'white';
+  g.fillText(`HP ${Math.max(0,player.hp)}/${player.maxHp}`,34,105);
+
+  if (paused || gameOver || won) {
+    g.fillStyle = 'rgba(0,0,0,.72)';
+    g.fillRect(0,0,width,height);
+    g.fillStyle = won ? '#fde047' : '#ffffff';
+    g.font = 'bold 62px sans-serif';
+    g.textAlign = 'center';
+    g.fillText(paused ? 'PAUSE' : (won ? 'STAGE CLEAR!' : 'GAME OVER'),width/2,height/2);
+    g.font = '26px sans-serif';
+    g.fillText(paused ? 'スマホ右側を長押しして再開' : 'アプリを再起動して再開',width/2,height/2+50);
+    g.textAlign = 'left';
+  }
+}
+
+let lastTime = performance.now();
+function gameLoop(now) {
+  const dt = Math.min(0.033,(now-lastTime)/1000);
+  lastTime = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+
+const context = cast.framework.CastReceiverContext.getInstance();
+context.addCustomMessageListener(NAMESPACE,event=>{
+  try {
+    const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    if (message && message.type === 'input') handleInput(message);
+  } catch (error) {
+    console.error('Cast Quest message error',error);
+  }
+});
+context.start();
+</script>
+</body>
+</html>
